@@ -41,6 +41,7 @@ public class SuperHeroDetailActivity extends BaseActivity implements SuperHeroDe
   @Bind(R.id.tv_super_hero_description) TextView superHeroDescriptionTextView;
   @Bind(R.id.iv_avengers_badge) View avengersBadgeView;
 
+
   @Override protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     initializeDagger();
