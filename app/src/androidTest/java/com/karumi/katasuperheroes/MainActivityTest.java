@@ -35,52 +35,53 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+
 import static android.support.test.espresso.Espresso.onView;
+import static android.support.test.espresso.action.ViewActions.click;
 import static android.support.test.espresso.assertion.ViewAssertions.matches;
 import static android.support.test.espresso.matcher.ViewMatchers.hasSibling;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
-import static android.support.test.espresso.matcher.ViewMatchers.withParent;
 import static android.support.test.espresso.matcher.ViewMatchers.withText;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.not;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
 @RunWith(AndroidJUnit4.class) @LargeTest public class MainActivityTest {
 
-  @Rule public DaggerMockRule<MainComponent> daggerRule =
-      new DaggerMockRule<>(MainComponent.class, new MainModule()).set(
-          new DaggerMockRule.ComponentSetter<MainComponent>() {
-            @Override public void setComponent(MainComponent component) {
-              SuperHeroesApplication app =
-                  (SuperHeroesApplication) InstrumentationRegistry.getInstrumentation()
-                      .getTargetContext()
-                      .getApplicationContext();
-              app.setComponent(component);
-            }
-          });
+    @Rule public DaggerMockRule<MainComponent> daggerRule =
+            new DaggerMockRule<>(MainComponent.class, new MainModule()).set(
+                    new DaggerMockRule.ComponentSetter<MainComponent>() {
+                        @Override public void setComponent(MainComponent component) {
+                            SuperHeroesApplication app =
+                                    (SuperHeroesApplication) InstrumentationRegistry.getInstrumentation()
+                                            .getTargetContext()
+                                            .getApplicationContext();
+                            app.setComponent(component);
+                        }
+                    });
 
-  @Rule public IntentsTestRule<MainActivity> activityRule =
-      new IntentsTestRule<>(MainActivity.class, true, false);
+    @Rule public IntentsTestRule<MainActivity> activityRule =
+            new IntentsTestRule<>(MainActivity.class, true, false);
 
-  @Mock SuperHeroesRepository repository;
+    @Mock SuperHeroesRepository repository;
 
-  @Test public void showsEmptyCaseIfThereAreNoSuperHeroes() {
-    givenThereAreNoSuperHeroes();
+    @Test public void showsEmptyCaseIfThereAreNoSuperHeroes() {
+        givenThereAreNoSuperHeroes();
 
-    startActivity();
+        startActivity();
 
-    onView(withText("¯\\_(ツ)_/¯")).check(matches(isDisplayed()));
-  }
+        onView(withText("¯\\_(ツ)_/¯")).check(matches(isDisplayed()));
+    }
 
+    @Test public void doesNotShowEmptyCaseIfThereAreSomeSuperHeroes() {
+        givenThereAreSomeSuperHeroes();
 
-  @Test public void doesNotShowEmptyCaseIfThereAreSomeSuperHeroes() {
-    givenThereAreSomeSuperHeroes();
+        startActivity();
 
-    startActivity();
-
-    onView(withId(R.id.tv_empty_case)).check(matches(not(isDisplayed())));
-  }
+        onView(withId(R.id.tv_empty_case)).check(matches(not(isDisplayed())));
+    }
 
     @Test public void showTheNumberOfSuperHeroes() {
         givenThereAreANumberOfSuperHeroes(10);
@@ -104,7 +105,7 @@ import static org.mockito.Mockito.when;
         }
     }
 
-    @Test public void showAvengersBadge() {
+    @Test public void showAvengersBadgeWhenSuperHeroIsAvenger() {
 
         int superHeroesName = 1000;
 
@@ -113,22 +114,71 @@ import static org.mockito.Mockito.when;
         startActivity();
 
         for (int i = 0; i < superHeroesName; i++) {
-            onView( withId(R.id.recycler_view)).perform(RecyclerViewActions.scrollToPosition(i) );
+            onView(withId(R.id.recycler_view)).perform(RecyclerViewActions.scrollToPosition(i));
 
-            onView( allOf(withId(R.id.iv_avengers_badge), hasSibling(withText("Hero " + i))) )
-                        .check(matches( i%2 == 0 ? isDisplayed() : not(isDisplayed())));
+            onView(allOf(withId(R.id.iv_avengers_badge), hasSibling(withText("Hero " + i)))).check(
+                    matches(i % 2 == 0 ? isDisplayed() : not(isDisplayed())));
         }
     }
+
+    @Test public void showSuperHeroDetailWhenSuperHeroClickedInList() {
+
+        String HERO_NAME = "Hero 0";
+
+        List<SuperHero> superHeros = givenThereAreSomeSuperHeroes();
+        when(repository.getByName(HERO_NAME)).thenReturn(superHeros.get(0));
+
+        startActivity();
+
+        onView(withId(R.id.recycler_view)).perform(
+                RecyclerViewActions.actionOnItemAtPosition(0, click()));
+
+        onView( withId(R.id.tv_super_hero_name)).check(matches(withText(HERO_NAME)) );
+
+    }
+
+    @Test public void showAvengerDetailWhenAvengerClickedInList() {
+
+        String HERO_NAME = "Hero 0";
+
+        List<SuperHero> superHeros = givenThereAreANumberOfSuperHeroesWhereOddAreAvengers(5);
+        when(repository.getByName(HERO_NAME)).thenReturn(superHeros.get(0));
+
+        startActivity();
+
+        onView(withId(R.id.recycler_view)).perform(
+                RecyclerViewActions.actionOnItemAtPosition(0, click()));
+
+        onView( withId(R.id.iv_avengers_badge)).check(matches(isDisplayed()) );
+    }
+
+
+    @Test public void doesNotShowAvengerDetailWhenAvengerClickedInList() {
+
+        String HERO_NAME = "Hero 1";
+
+        List<SuperHero> superHeros = givenThereAreANumberOfSuperHeroesWhereOddAreAvengers(5);
+        when(repository.getByName(HERO_NAME)).thenReturn(superHeros.get(1));
+
+        startActivity();
+
+        onView(withId(R.id.recycler_view)).perform(
+                RecyclerViewActions.actionOnItemAtPosition(1, click()));
+
+        onView( withId(R.id.iv_avengers_badge)).check(matches(not(isDisplayed())) );
+    }
+
+    //espresso intents / intenders.
 
     private void givenThereAreNoSuperHeroes() {
         when(repository.getAll()).thenReturn(Collections.<SuperHero>emptyList());
     }
 
-    private void givenThereAreSomeSuperHeroes() {
-        givenThereAreANumberOfSuperHeroes(5);
+    private List<SuperHero> givenThereAreSomeSuperHeroes() {
+        return givenThereAreANumberOfSuperHeroes(5);
     }
 
-    private void givenThereAreANumberOfSuperHeroes(int number) {
+    private List<SuperHero> givenThereAreANumberOfSuperHeroes(int number) {
         List<SuperHero> mockSuperHeroes = new ArrayList<>();
         for (int i = 0; i < number; i++) {
             mockSuperHeroes.add(new SuperHero("Hero " + i, "http://lorempixel.com/400/200/", true,
@@ -136,17 +186,19 @@ import static org.mockito.Mockito.when;
         }
 
         when(repository.getAll()).thenReturn(mockSuperHeroes);
+        return mockSuperHeroes;
     }
 
-    private void givenThereAreANumberOfSuperHeroesWhereOddAreAvengers(int number) {
+    private List<SuperHero> givenThereAreANumberOfSuperHeroesWhereOddAreAvengers(int number) {
         List<SuperHero> mockSuperHeroes = new ArrayList<>();
         for (int i = 0; i < number; i++) {
-            mockSuperHeroes.add(new SuperHero("Hero " + i, "http://lorempixel.com/400/200/",
-                    i % 2 == 0,
-                    "Desc " + i));
+            mockSuperHeroes.add(
+                    new SuperHero("Hero " + i, "http://lorempixel.com/400/200/", i % 2 == 0,
+                            "Desc " + i));
         }
 
         when(repository.getAll()).thenReturn(mockSuperHeroes);
+        return mockSuperHeroes;
     }
 
     private MainActivity startActivity() {
