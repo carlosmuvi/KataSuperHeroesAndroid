@@ -17,29 +17,32 @@
 package com.karumi.katasuperheroes;
 
 import android.support.test.InstrumentationRegistry;
+import android.support.test.espresso.contrib.RecyclerViewActions;
 import android.support.test.espresso.intent.rule.IntentsTestRule;
 import android.support.test.runner.AndroidJUnit4;
 import android.test.suitebuilder.annotation.LargeTest;
 import com.karumi.katasuperheroes.di.MainComponent;
 import com.karumi.katasuperheroes.di.MainModule;
+import com.karumi.katasuperheroes.matchers.RecyclerViewItemsCountMatcher;
 import com.karumi.katasuperheroes.model.SuperHero;
 import com.karumi.katasuperheroes.model.SuperHeroesRepository;
 import com.karumi.katasuperheroes.ui.view.MainActivity;
 import it.cosenonjaviste.daggermock.DaggerMockRule;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-
 import static android.support.test.espresso.Espresso.onView;
 import static android.support.test.espresso.assertion.ViewAssertions.matches;
+import static android.support.test.espresso.matcher.ViewMatchers.hasSibling;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
+import static android.support.test.espresso.matcher.ViewMatchers.withParent;
 import static android.support.test.espresso.matcher.ViewMatchers.withText;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.when;
 
@@ -79,21 +82,74 @@ import static org.mockito.Mockito.when;
     onView(withId(R.id.tv_empty_case)).check(matches(not(isDisplayed())));
   }
 
-  private void givenThereAreNoSuperHeroes() {
-    when(repository.getAll()).thenReturn(Collections.<SuperHero>emptyList());
-  }
+    @Test public void showTheNumberOfSuperHeroes() {
+        givenThereAreANumberOfSuperHeroes(10);
 
-  private void givenThereAreSomeSuperHeroes() {
-    List<SuperHero> mockSuperHeroes = new ArrayList<>();
-    for (int i = 0; i < 5; i++) {
-      mockSuperHeroes.add(new SuperHero("Hero " + i, "http://lorempixel.com/400/200/", true, "Desc " + i));
+        startActivity();
+
+        onView(withId(R.id.recycler_view)).check(
+                matches(RecyclerViewItemsCountMatcher.recyclerViewHasItemCount(10)));
     }
 
-    when(repository.getAll()).thenReturn(mockSuperHeroes);
+    @Test public void showSuperHeroesName() {
 
-  }
+        int superHeroesName = 1000;
+        givenThereAreANumberOfSuperHeroes(superHeroesName);
 
-  private MainActivity startActivity() {
-    return activityRule.launchActivity(null);
-  }
+        startActivity();
+
+        for (int i = 0; i < superHeroesName; i++) {
+            onView(withId(R.id.recycler_view)).perform(RecyclerViewActions.scrollToPosition(i));
+            onView(withText("Hero " + i)).check(matches(isDisplayed()));
+        }
+    }
+
+    @Test public void showAvengersBadge() {
+
+        int superHeroesName = 1000;
+
+        givenThereAreANumberOfSuperHeroesWhereOddAreAvengers(superHeroesName);
+
+        startActivity();
+
+        for (int i = 0; i < superHeroesName; i++) {
+            onView( withId(R.id.recycler_view)).perform(RecyclerViewActions.scrollToPosition(i) );
+
+            onView( allOf(withId(R.id.iv_avengers_badge), hasSibling(withText("Hero " + i))) )
+                        .check(matches( i%2 == 0 ? isDisplayed() : not(isDisplayed())));
+        }
+    }
+
+    private void givenThereAreNoSuperHeroes() {
+        when(repository.getAll()).thenReturn(Collections.<SuperHero>emptyList());
+    }
+
+    private void givenThereAreSomeSuperHeroes() {
+        givenThereAreANumberOfSuperHeroes(5);
+    }
+
+    private void givenThereAreANumberOfSuperHeroes(int number) {
+        List<SuperHero> mockSuperHeroes = new ArrayList<>();
+        for (int i = 0; i < number; i++) {
+            mockSuperHeroes.add(new SuperHero("Hero " + i, "http://lorempixel.com/400/200/", true,
+                    "Desc " + i));
+        }
+
+        when(repository.getAll()).thenReturn(mockSuperHeroes);
+    }
+
+    private void givenThereAreANumberOfSuperHeroesWhereOddAreAvengers(int number) {
+        List<SuperHero> mockSuperHeroes = new ArrayList<>();
+        for (int i = 0; i < number; i++) {
+            mockSuperHeroes.add(new SuperHero("Hero " + i, "http://lorempixel.com/400/200/",
+                    i % 2 == 0,
+                    "Desc " + i));
+        }
+
+        when(repository.getAll()).thenReturn(mockSuperHeroes);
+    }
+
+    private MainActivity startActivity() {
+        return activityRule.launchActivity(null);
+    }
 }
